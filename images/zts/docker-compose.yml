@@ -1,0 +1,41 @@
+# 这里用于调试解决构建报错的
+name: erudin_image_zts
+networks:
+  erudin_zts_build_net:
+    driver: bridge
+    ipam:
+      driver: default
+      config:
+        - subnet: 30.98.1.0/24
+services:
+  zts:
+    image: php:8.4-zts-alpine
+    command: ["sleep", "infinity"]  # 保持容器运行
+    tty: true
+    stdin_open: true
+    restart: "no"
+    networks:
+      - erudin_zts_build_net    # 与stp同网络
+    # dns: 30.98.1.254                # 使用stp做dns
+    # sysctls:
+    #   net.ipv4.conf.all.route_localnet: 1  # 允许本地路由 为使用stp
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "1m"
+    # depends_on:
+    #   - erudin_helper_stp           # 先让stp启动
+  # erudin_helper_stp:
+  #   build: ../stp
+  #   image: erudin_stp
+  #   cap_add:
+  #     - NET_ADMIN
+  #     - NET_RAW
+  #   environment:
+  #     PROXY_HOST: "${PROXY_HOST:-your.proxy.server}"  # 代理服务器地址
+  #     PROXY_PORT: "${PROXY_PORT:-1080}"               # 代理端口
+  #     PROXY_USER: "${PROXY_USER:-your_username}"      # 认证用户名
+  #     PROXY_PASS: "${PROXY_PASS:-your_password}"      # 认证密码
+  #   networks:
+  #     erudin_zts_build_net:
+  #       ipv4_address: 30.98.1.254     # 固定网关IP

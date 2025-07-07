@@ -1,0 +1,46 @@
+server {
+    listen 80;
+    listen [::]:80;
+    server_name gs.easybook.ltd;
+    root /opt/bri/ubl-foundation/public;
+    client_max_body_size 10m;
+
+    add_header X-Frame-Options "SAMEORIGIN";
+    add_header X-Content-Type-Options "nosniff";
+    charset utf-8;
+
+    location /admin {
+        error_page 404 /index.php;
+
+        try_files $uri $uri/ /index.php?$query_string;
+    }
+
+    location /api/ {
+        error_page 404 /index.php;
+
+        try_files $uri $uri/ /index.php?$query_string;
+    }
+
+    location ~ \.php$ {
+        root /opt/bri/ubl-foundation/public;
+
+        fastcgi_pass php-upstream;
+        fastcgi_param SCRIPT_FILENAME $realpath_root$fastcgi_script_name;
+        include fastcgi_params;
+    }
+
+    location = /favicon.ico { access_log off; log_not_found off; }
+    location = /robots.txt  { access_log off; log_not_found off; }
+
+    location ~ /\.(?!well-known).* {
+        deny all;
+    }
+
+    location ~ .*\.(svn|git|hg) {
+        deny all;
+    }
+
+    location ~ /\.ht {
+        deny all;
+    }
+}

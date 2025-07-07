@@ -1,0 +1,19 @@
+# 这里用于调试解决构建报错的
+name: erudin_image_fpm
+networks:
+  erudin_images_fpm_4build:
+    driver: bridge
+    ipam:
+      driver: default
+      config:
+        - subnet: 30.99.1.0/24
+services:
+  fpm:
+    image: php:8.4-fpm-alpine
+    restart: "no"
+    networks:
+      - erudin_images_fpm_4build
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "1m"

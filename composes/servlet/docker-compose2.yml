@@ -1,0 +1,137 @@
+version: '3.8'
+
+services:
+  php-fpm:
+    image: php:8.3-fpm-alpine
+    container_name: app_php
+    volumes:
+      - ./src:/var/www/html
+      - ./config/php/php.ini:/usr/local/etc/php/conf.d/custom.ini
+    networks:
+      - backend-network
+    depends_on:
+      - db
+      - redis
+      - mq
+    environment:
+      DB_HOST: db
+      DB_NAME: app_db
+      DB_USER: app_user
+      DB_PASSWORD: ${DB_PASSWORD}
+      REDIS_HOST: redis
+
+  nginx:
+    image: nginx:latest
+    container_name: app_nginx
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./src:/var/www/html
+      - ./config/nginx:/etc/nginx/conf.d
+      - ./ssl:/etc/nginx/ssl
+    networks:
+      - backend-network
+    depends_on:
+      - php-fpm
+
+  db:
+    image: postgres:16-alpine
+    container_name: app_pgsql
+    environment:
+      POSTGRES_USER: app_user
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+      POSTGRES_DB: app_db
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      - ./config/pgsql:/docker-entrypoint-initdb.d
+    networks:
+      - backend-network
+
+  redis:
+    image: redis:7.2-alpine
+    container_name: app_redis
+    volumes:
+      - redisdata:/data
+    networks:
+      - backend-network
+
+  mq:
+    image: rabbitmq:3.12-management
+    container_name: app_rabbitmq
+    environment:
+      RABBITMQ_DEFAULT_USER: mq_user
+      RABBITMQ_DEFAULT_PASS: ${MQ_PASSWORD}
+    volumes:
+      - mqdata:/var/lib/rabbitmq
+    networks:
+      - backend-network
+
+  meilisearch:
+    image: getmeili/meilisearch:v1.7
+    container_name: app_meilisearch
+    environment:
+      MEILI_MASTER_KEY: ${MEILI_MASTER_KEY}
+    volumes:
+      - meili_data:/meili_data
+    ports:
+      - "7700:7700"
+    networks:
+      - backend-network
+
+  deno:
+    image: denoland/deno:latest
+    container_name: app_deno
+    volumes:
+      - ./deno:/app
+    working_dir: /app
+    networks:
+      - backend-network
+    command: tail -f /dev/null # 保持容器运行
+
+volumes:
+  pgdata:
+  redisdata:
+  mqdata:
+  meili_data:
+
+networks:
+  backend-network:
+    driver: bridge
+
+# 使用说明：
+# 1. 在项目根目录创建以下目录结构：
+#   - src/          # 项目代码
+#   - config/
+#     ├─ nginx/
+#     ├─ php/
+#     └─ pgsql/
+#   - ssl/          # SSL证书
+#   - deno/         # Deno代码
+#
+# 2. 创建.env文件并设置环境变量：
+#   DB_PASSWORD=your_db_password
+#   MQ_PASSWORD=your_rabbitmq_password
+#   MEILI_MASTER_KEY=your_meilisearch_master_key
+
+# nginx配置参考
+# server {
+#     listen 80;
+#     server_name localhost;
+#     root /var/www/html/public;
+
+#     location / {
+#         try_files $uri /index.php$is_args$args;
+#     }
+
+#     location ~ ^/index\.php(/|$) {
+#         fastcgi_pass php-fpm:9000;
+#         fastcgi_split_path_info ^(.+\.php)(/.*)$;
+#         include fastcgi_params;
+#         fastcgi_param SCRIPT_FILENAME $document_root$fastcgi_script_name;
+#     }
+
+#     location ~ \.php$ {
+#         return 404;
+#     }
+# }

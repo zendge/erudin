@@ -1,0 +1,48 @@
+# 这里用于调试解决构建报错的
+networks:
+  tunare-net:
+    driver: bridge
+    ipam:
+      driver: default
+      config:
+        - subnet: 30.99.1.0/24
+services:
+  portal:
+    image: nginx:1.29-alpine
+    restart: "always"
+    volumes:
+      - /etc/localtime:/etc/localtime:ro
+      - ./swap:/var/swap
+      - ./services/portal/etc/nginx/conf.d/http.conf:/etc/nginx/conf.d/http.conf:ro
+      - ./services/portal/etc/nginx/conf.d/sites.conf:/etc/nginx/conf.d/sites.conf:ro
+      - ./services/portal/etc/nginx/sites:/etc/nginx/sites:ro
+      - ./services/portal/etc/nginx/snippets:/etc/nginx/snippets:ro
+      - ./services/portal/etc/nginx/fastcgi_params:/etc/nginx/fastcgi_params:ro
+      - ./services/portal/etc/nginx/fastcgi.conf:/etc/nginx/fastcgi.conf:ro
+      - /opt/bri-production:/opt/bri
+    networks:
+      - brinet-prod
+    ports:
+      - "6080:80"
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "50m"
+    links:
+      - worker_fpm
+  worker:
+    image: erudin_zts:25.6
+    command: ["sleep", "infinity"]  # 这里是临时保持容器运行
+    restart: "no"
+    networks:
+      - tunare-net
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "1m"
+  db:
+    image: postgres:18-alpine
+  cache:
+    image: redis:8-alpine
+  monitor:
+    image: louislam/uptime-kuma:2-alpine
